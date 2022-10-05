@@ -1,10 +1,20 @@
-#! /usr/bin/env python
-# coding=utf-8
-# @Author: Longxing Tan, tanlongxing888@163.com
-# Implementations of anchor generator that uses the k-means clustering to generate anchors for new data
+# ==========================================================================
+#            Mathues don't change this implementation                       
+# ==========================================================================
+
 
 import numpy as np
+from absl import app, flags
+from absl.flags import FLAGS
+from rich.console import Console
 
+
+# # --------------------------------------------------------------------------
+# #                              define the flags                        
+# # --------------------------------------------------------------------------
+
+flags.DEFINE_string("annotations_dir", "data/voc_train.txt", "path to the training annotations i.e. voc_train.txt")
+flags.DEFINE_string("anchors", "data/anchors.txt", "path to the file inside which the anchors will be saved")
 
 class Anchor(object):
     # create the default anchors by k-means
@@ -90,9 +100,19 @@ class Anchor(object):
         )
 
 
-if __name__ == "__main__":
+def main(argv):
+    
     anchor = Anchor()
     anchors = anchor.generate_anchor(
-        annotations_dir="../data/voc2012/VOCdevkit/VOC2012/train.txt", k=9
+        annotations_dir=FLAGS.annotations_dir, 
+        k=9
     )
-    print(anchors)
+    Console().print(f"🟨\tanchors are \t [magenta]{anchors}")
+    Path(FLAGS.anchors).write_text(str(anchors))
+
+
+
+if __name__ == "__main__":
+    
+    app.run(main)
+    

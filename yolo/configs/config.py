@@ -10,32 +10,32 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     "--train_annotations_dir",
     type=str,
-    default="../data/voc2012/VOCdevkit/VOC2012/train.txt",
+    default="/home/fsuser/AI_ENGINE/yolov5_tf_original/Yolov5/data/voc_train.txt",
     help="train annotations path",
 )
 parser.add_argument(
     "--test_annotations_dir",
     type=str,
-    default="../data/voc2012/VOCdevkit/VOC2012/valid.txt",
+    default="/home/fsuser/AI_ENGINE/yolov5_tf_original/Yolov5/data/voc_test.txt",
     help="test annotations path",
 )
 parser.add_argument(
     "--class_name_dir",
     type=str,
-    default="../data/voc2012/VOCdevkit/VOC2012/voc2012.names",
+    default="/home/fsuser/AI_ENGINE/yolov5_tf_original/Yolov5/data/sample/voc.names",
     help="classes name path",
 )
 parser.add_argument(
-    "--yaml_dir", type=str, default="configs/yolo-m-mish.yaml", help="model.yaml path"
+    "--yaml_dir", type=str, default="/home/fsuser/AI_ENGINE/yolov5_tf_original/Yolov5/yolo/configs/yolo-m-mish.yaml", help="model.yaml path"
 )
-parser.add_argument("--log_dir", type=str, default="../logs", help="log path")
+parser.add_argument("--log_dir", type=str, default="/home/fsuser/AI_ENGINE/yolov5_tf_original/Yolov5/logs", help="log path")
 parser.add_argument(
-    "--checkpoint_dir", type=str, default="../weights", help="saved checkpoint path"
+    "--checkpoint_dir", type=str, default="/home/fsuser/AI_ENGINE/yolov5_tf_original/Yolov5/weights", help="saved checkpoint path"
 )
 parser.add_argument(
     "--saved_model_dir",
     type=str,
-    default="../weights/yolov5",
+    default="/home/fsuser/AI_ENGINE/yolov5_tf_original/Yolov5/weights/yolov5",
     help="saved pb model path",
 )
 
