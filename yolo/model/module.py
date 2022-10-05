@@ -4,7 +4,8 @@
 # implementations of layer modules
 
 import tensorflow as tf
-from tensorflow.keras.layers import Layer, Conv2D, BatchNormalization, MaxPool2D
+from tensorflow.keras.layers import BatchNormalization, Conv2D, Layer, MaxPool2D
+
 # from tensorflow.keras.layers import DepthwiseConv2D
 # from tensorflow.keras.layers.experimental import SyncBatchNormalization
 
@@ -20,11 +21,18 @@ class Swish(object):
 
 
 class Conv(Layer):
-    def __init__(self, filters, kernel_size, strides, padding='SAME', groups=1):
+    def __init__(self, filters, kernel_size, strides, padding="SAME", groups=1):
         super(Conv, self).__init__()
-        self.conv = Conv2D(filters, kernel_size, strides, padding, groups=groups, use_bias=False,
-                           kernel_initializer=tf.random_normal_initializer(stddev=0.01),
-                           kernel_regularizer=tf.keras.regularizers.L2(5e-4))
+        self.conv = Conv2D(
+            filters,
+            kernel_size,
+            strides,
+            padding,
+            groups=groups,
+            use_bias=False,
+            kernel_initializer=tf.random_normal_initializer(stddev=0.01),
+            kernel_regularizer=tf.keras.regularizers.L2(5e-4),
+        )
         self.bn = BatchNormalization()
         self.activation = Mish()
 
@@ -42,20 +50,28 @@ class DWConv(Layer):
 
 
 class Focus(Layer):
-    def __init__(self, filters, kernel_size, strides=1, padding='SAME'):
+    def __init__(self, filters, kernel_size, strides=1, padding="SAME"):
         super(Focus, self).__init__()
         self.conv = Conv(filters, kernel_size, strides, padding)
 
     def call(self, x):
-        return self.conv(tf.concat([x[..., ::2, ::2, :],
-                                    x[..., 1::2, ::2, :],
-                                    x[..., ::2, 1::2, :],
-                                    x[..., 1::2, 1::2, :]],
-                                   axis=-1))
+        return self.conv(
+            tf.concat(
+                [
+                    x[..., ::2, ::2, :],
+                    x[..., 1::2, ::2, :],
+                    x[..., ::2, 1::2, :],
+                    x[..., 1::2, 1::2, :],
+                ],
+                axis=-1,
+            )
+        )
 
 
 class CrossConv(Layer):
-    def __init__(self, filters, kernel_size, strides=1, groups=1, expansion=1, shortcut=False):
+    def __init__(
+        self, filters, kernel_size, strides=1, groups=1, expansion=1, shortcut=False
+    ):
         super(CrossConv, self).__init__()
         units_e = int(filters * expansion)
         self.conv1 = Conv(units_e, (1, kernel_size), (1, strides))
@@ -96,12 +112,26 @@ class BottleneckCSP(Layer):
         super(BottleneckCSP, self).__init__()
         units_e = int(units * expansion)
         self.conv1 = Conv(units_e, 1, 1)
-        self.conv2 = Conv2D(units_e, 1, 1, use_bias=False, kernel_initializer=tf.random_normal_initializer(stddev=0.01))
-        self.conv3 = Conv2D(units_e, 1, 1, use_bias=False, kernel_initializer=tf.random_normal_initializer(stddev=0.01))
+        self.conv2 = Conv2D(
+            units_e,
+            1,
+            1,
+            use_bias=False,
+            kernel_initializer=tf.random_normal_initializer(stddev=0.01),
+        )
+        self.conv3 = Conv2D(
+            units_e,
+            1,
+            1,
+            use_bias=False,
+            kernel_initializer=tf.random_normal_initializer(stddev=0.01),
+        )
         self.conv4 = Conv(units, 1, 1)
         self.bn = BatchNormalization(momentum=0.03)
         self.activation = Mish()
-        self.modules = tf.keras.Sequential([Bottleneck(units_e, shortcut, expansion=1.0) for _ in range(n_layer)])
+        self.modules = tf.keras.Sequential(
+            [Bottleneck(units_e, shortcut, expansion=1.0) for _ in range(n_layer)]
+        )
 
     def call(self, x):
         y1 = self.conv3(self.modules(self.conv1(x)))
@@ -114,11 +144,19 @@ class BottleneckCSP2(Layer):
         super(BottleneckCSP2, self).__init__()
         units_e = int(units)  # hidden channels
         self.conv1 = Conv(units_e, 1, 1)
-        self.conv2 = Conv2D(units_e, 1, 1, use_bias=False, kernel_initializer=tf.random_normal_initializer(stddev=0.01))
+        self.conv2 = Conv2D(
+            units_e,
+            1,
+            1,
+            use_bias=False,
+            kernel_initializer=tf.random_normal_initializer(stddev=0.01),
+        )
         self.conv3 = Conv(units, 1, 1)
         self.bn = BatchNormalization()
         self.activation = Mish()
-        self.modules = tf.keras.Sequential([Bottleneck(units_e, shortcut, expansion=1.0) for _ in range(n_layer)])
+        self.modules = tf.keras.Sequential(
+            [Bottleneck(units_e, shortcut, expansion=1.0) for _ in range(n_layer)]
+        )
 
     def call(self, x):
         x1 = self.conv1(x)
@@ -148,11 +186,15 @@ class SPP(Layer):
         units_e = units // 2  # Todo:
         self.conv1 = Conv(units_e, 1, 1)
         self.conv2 = Conv(units, 1, 1)
-        self.modules = [MaxPool2D(pool_size=x, strides=1, padding='SAME') for x in kernels]  # Todo: padding check
+        self.modules = [
+            MaxPool2D(pool_size=x, strides=1, padding="SAME") for x in kernels
+        ]  # Todo: padding check
 
     def call(self, x):
         x = self.conv1(x)
-        return self.conv2(tf.concat([x] + [module(x) for module in self.modules], axis=-1))
+        return self.conv2(
+            tf.concat([x] + [module(x) for module in self.modules], axis=-1)
+        )
 
 
 class SPPCSP(Layer):
@@ -161,10 +203,18 @@ class SPPCSP(Layer):
         super(SPPCSP, self).__init__()
         units_e = int(2 * units * expansion)
         self.conv1 = Conv(units_e, 1, 1)
-        self.conv2 = Conv2D(units_e, 1, 1, use_bias=False, kernel_initializer=tf.random_normal_initializer(stddev=0.01))
+        self.conv2 = Conv2D(
+            units_e,
+            1,
+            1,
+            use_bias=False,
+            kernel_initializer=tf.random_normal_initializer(stddev=0.01),
+        )
         self.conv3 = Conv(units_e, 3, 1)
         self.conv4 = Conv(units_e, 1, 1)
-        self.modules = [MaxPool2D(pool_size=x, strides=1, padding='same') for x in kernels]
+        self.modules = [
+            MaxPool2D(pool_size=x, strides=1, padding="same") for x in kernels
+        ]
         self.conv5 = Conv(units_e, 1, 1)
         self.conv6 = Conv(units_e, 3, 1)
         self.bn = BatchNormalization()
@@ -173,19 +223,27 @@ class SPPCSP(Layer):
 
     def call(self, x):
         x1 = self.conv4(self.conv3(self.conv1(x)))
-        y1 = self.conv6(self.conv5(tf.concat([x1] + [module(x1) for module in self.modules], axis=-1)))
+        y1 = self.conv6(
+            self.conv5(
+                tf.concat([x1] + [module(x1) for module in self.modules], axis=-1)
+            )
+        )
         y2 = self.conv2(x)
         return self.conv7(self.act(self.bn(tf.concat([y1, y2], axis=-1))))
 
 
 class Upsample(Layer):
-    def __init__(self, i=None, ratio=2, method='bilinear'):
+    def __init__(self, i=None, ratio=2, method="bilinear"):
         super(Upsample, self).__init__()
         self.ratio = ratio
         self.method = method
 
     def call(self, x):
-        return tf.image.resize(x, (tf.shape(x)[1] * self.ratio, tf.shape(x)[2] * self.ratio), method=self.method)
+        return tf.image.resize(
+            x,
+            (tf.shape(x)[1] * self.ratio, tf.shape(x)[2] * self.ratio),
+            method=self.method,
+        )
 
 
 class Concat(Layer):

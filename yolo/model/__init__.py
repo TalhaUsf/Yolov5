@@ -2,5 +2,5 @@
 # coding=utf-8
 # @Author: Longxing Tan, tanlongxing888@163.com
 
+from .optimizer import LrScheduler, Optimizer
 from .yolo import Yolo
-from .optimizer import Optimizer, LrScheduler

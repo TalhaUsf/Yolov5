@@ -2,11 +2,14 @@
 # coding=utf-8
 # @Author: Longxing Tan, tanlongxing888@163.com
 
-import cv2
 import math
 import random
+
+import cv2
 import numpy as np
+
 from .image_utils import resize_image
+
 random.seed(1919)
 
 
@@ -15,7 +18,9 @@ def load_mosaic_image(index, mosaic_border, image_target_size, images_dir, label
     # labels output: pixel
     max_index = len(labels) - 1
     indices = [index] + [random.randint(0, max_index) for _ in range(3)]
-    yc, xc = [int(random.uniform(-i, 2 * image_target_size + i)) for i in mosaic_border]  # mosaic center x, y
+    yc, xc = [
+        int(random.uniform(-i, 2 * image_target_size + i)) for i in mosaic_border
+    ]  # mosaic center x, y
     label_mosaic = []
 
     for i, index in enumerate(indices):
@@ -28,18 +33,34 @@ def load_mosaic_image(index, mosaic_border, image_target_size, images_dir, label
         h, w, _ = img.shape
 
         if i == 0:  # top left
-            img_mosaic = np.full((image_target_size * 2, image_target_size * 2, 3), 128,
-                                 dtype=np.uint8)  # base image with 4 tiles
+            img_mosaic = np.full(
+                (image_target_size * 2, image_target_size * 2, 3), 128, dtype=np.uint8
+            )  # base image with 4 tiles
             x1a, y1a, x2a, y2a = max(xc - w, 0), max(yc - h, 0), xc, yc
             x1b, y1b, x2b, y2b = w - (x2a - x1a), h - (y2a - y1a), w, h
         elif i == 1:  # top right
-            x1a, y1a, x2a, y2a = xc, max(yc - h, 0), min(xc + w, image_target_size * 2), yc
+            x1a, y1a, x2a, y2a = (
+                xc,
+                max(yc - h, 0),
+                min(xc + w, image_target_size * 2),
+                yc,
+            )
             x1b, y1b, x2b, y2b = 0, h - (y2a - y1a), min(w, x2a - x1a), h
         elif i == 2:  # bottom left
-            x1a, y1a, x2a, y2a = max(xc - w, 0), yc, xc, min(image_target_size * 2, yc + h)
+            x1a, y1a, x2a, y2a = (
+                max(xc - w, 0),
+                yc,
+                xc,
+                min(image_target_size * 2, yc + h),
+            )
             x1b, y1b, x2b, y2b = w - (x2a - x1a), 0, max(xc, w), min(y2a - y1a, h)
         elif i == 3:  # bottom right
-            x1a, y1a, x2a, y2a = xc, yc, min(xc + w, image_target_size * 2), min(image_target_size * 2, yc + h)
+            x1a, y1a, x2a, y2a = (
+                xc,
+                yc,
+                min(xc + w, image_target_size * 2),
+                min(image_target_size * 2, yc + h),
+            )
             x1b, y1b, x2b, y2b = 0, 0, min(w, x2a - x1a), min(y2a - y1a, h)
 
         img_mosaic[y1a:y2a, x1a:x2a] = img[y1b:y2b, x1b:x2b]
@@ -56,15 +77,26 @@ def load_mosaic_image(index, mosaic_border, image_target_size, images_dir, label
                 label_new[:, [1, 3]] = label_new[:, [1, 3]] * h + padh
         label_mosaic.append(label_new)
 
-    if len(label_mosaic):        
+    if len(label_mosaic):
         label_mosaic = np.concatenate(label_mosaic, 0)
         label_mosaic[:, :4] = np.clip(label_mosaic[:, :4], 0, 2 * image_target_size)
 
-    img_mosaic, label_mosaic = random_perspective(img_mosaic, label=label_mosaic, border=mosaic_border)
+    img_mosaic, label_mosaic = random_perspective(
+        img_mosaic, label=label_mosaic, border=mosaic_border
+    )
     return img_mosaic, label_mosaic
 
 
-def random_perspective(img, label=(), degrees=10, translate=.1, scale=.1, shear=10, perspective=0.0, border=(0, 0)):
+def random_perspective(
+    img,
+    label=(),
+    degrees=10,
+    translate=0.1,
+    scale=0.1,
+    shear=10,
+    perspective=0.0,
+    border=(0, 0),
+):
     # labels style: pixel, [xyxy, cls]
     img = img.astype(np.uint8)
 
@@ -96,16 +128,24 @@ def random_perspective(img, label=(), degrees=10, translate=.1, scale=.1, shear=
 
     # Translation
     T = np.eye(3)
-    T[0, 2] = random.uniform(0.5 - translate, 0.5 + translate) * width  # x translation (pixels)
-    T[1, 2] = random.uniform(0.5 - translate, 0.5 + translate) * height  # y translation (pixels)
+    T[0, 2] = (
+        random.uniform(0.5 - translate, 0.5 + translate) * width
+    )  # x translation (pixels)
+    T[1, 2] = (
+        random.uniform(0.5 - translate, 0.5 + translate) * height
+    )  # y translation (pixels)
 
     # Combined rotation matrix
     M = T @ S @ R @ P @ C  # order of operations (right to left) is IMPORTANT
     if (border[0] != 0) or (border[1] != 0) or (M != np.eye(3)).any():  # image changed
         if perspective:
-            img = cv2.warpPerspective(img, M, dsize=(width, height), borderValue=(114, 114, 114))
+            img = cv2.warpPerspective(
+                img, M, dsize=(width, height), borderValue=(114, 114, 114)
+            )
         else:  # affine
-            img = cv2.warpAffine(img, M[:2], dsize=(width, height), borderValue=(114, 114, 114))
+            img = cv2.warpAffine(
+                img, M[:2], dsize=(width, height), borderValue=(114, 114, 114)
+            )
 
     # Transform label coordinates
     n = len(label)
@@ -116,7 +156,9 @@ def random_perspective(img, label=(), degrees=10, translate=.1, scale=.1, shear=
         # assert np.max(labels[:, 0:4]) > 1, "don't use norm box coordinates here"
         # warp points
         xy = np.ones((n * 4, 3))
-        xy[:, :2] = label[:, [0, 1, 2, 3, 0, 3, 2, 1]].reshape(n * 4, 2)  # x1y1, x2y2, x1y2, x2y1
+        xy[:, :2] = label[:, [0, 1, 2, 3, 0, 3, 2, 1]].reshape(
+            n * 4, 2
+        )  # x1y1, x2y2, x1y2, x2y1
 
         xy = (xy @ M.T)[:, :2].reshape(n, 8)
 
@@ -137,7 +179,7 @@ def random_perspective(img, label=(), degrees=10, translate=.1, scale=.1, shear=
 
         label = label[i]
         label[:, 0:4] = xy[i]
-        
+
         if label.size == 0:  # in case, all labels is out
             label = np.array([[0, 0, 0, 0, 0]], np.float32)
     return img, label
@@ -153,7 +195,9 @@ def augment_hsv(img, hgain=0.5, sgain=0.5, vgain=0.5):
     lut_sat = np.clip(x * rand[1], 0, 255).astype(dtype)
     lut_val = np.clip(x * rand[2], 0, 255).astype(dtype)
 
-    img_hsv = cv2.merge((cv2.LUT(hue, lut_hue), cv2.LUT(sat, lut_sat), cv2.LUT(val, lut_val))).astype(dtype)
+    img_hsv = cv2.merge(
+        (cv2.LUT(hue, lut_hue), cv2.LUT(sat, lut_sat), cv2.LUT(val, lut_val))
+    ).astype(dtype)
     return cv2.cvtColor(img_hsv, cv2.COLOR_HSV2BGR)
 
 
@@ -174,5 +218,5 @@ def random_flip(img, labels=None):
     if ud_flip and random.random() < 0.5:
         img = np.flipud(img)
         if labels is not None:
-            labels[:, [1,  3]] = 1 - labels[:, [1, 3]]
+            labels[:, [1, 3]] = 1 - labels[:, [1, 3]]
     return img, labels

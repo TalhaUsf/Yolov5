@@ -34,21 +34,27 @@ class Anchor(object):
         annotations = self.prepare_annotations(annotations_dir)
         clusters = self.kmeans(annotations, k=k)
         avg_iou = self.get_avg_iou(annotations, clusters)
-        print('Average IOU', avg_iou)
-        anchors = clusters.astype('int').tolist()
+        print("Average IOU", avg_iou)
+        anchors = clusters.astype("int").tolist()
         anchors = sorted(anchors, key=lambda x: x[0] * x[1])
         return anchors
 
     def prepare_annotations(self, list_path):
-        with open(list_path, 'r') as f:
-            annotations = [line.strip() for line in f.readlines() if len(line.strip().split()[1:]) != 0]
-        print('load examples : {}'.format(len(annotations)))
+        with open(list_path, "r") as f:
+            annotations = [
+                line.strip()
+                for line in f.readlines()
+                if len(line.strip().split()[1:]) != 0
+            ]
+        print("load examples : {}".format(len(annotations)))
 
         result = []
         for i, annotation in enumerate(annotations):
             line = annotation.split()
-            bboxes = np.array([list(map(float, box.split(','))) for box in line[1:]])
-            assert bboxes.shape[1] == 5, "make sure the labeled objective has xmin,ymin,xmax,ymax,class"
+            bboxes = np.array([list(map(float, box.split(","))) for box in line[1:]])
+            assert (
+                bboxes.shape[1] == 5
+            ), "make sure the labeled objective has xmin,ymin,xmax,ymax,class"
             bbox_wh = bboxes[:, 2:4] - bboxes[:, 0:2]  # n_box * 2
             result.append(bbox_wh)
         result = np.concatenate(result, axis=0)
@@ -72,15 +78,21 @@ class Anchor(object):
         box_area = box[0] * box[1]
         cluster_area = clusters[:, 0] * clusters[:, 1]
 
-        iou_ = np.true_divide(intersection, box_area + cluster_area - intersection + 1e-7)
+        iou_ = np.true_divide(
+            intersection, box_area + cluster_area - intersection + 1e-7
+        )
         # iou_ = intersection / (box_area + cluster_area - intersection + 1e-7)
         return iou_
 
     def get_avg_iou(self, boxes, clusters):
-        return np.mean([np.max(self.iou(boxes[i], clusters)) for i in range(boxes.shape[0])])
+        return np.mean(
+            [np.max(self.iou(boxes[i], clusters)) for i in range(boxes.shape[0])]
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     anchor = Anchor()
-    anchors = anchor.generate_anchor(annotations_dir='../data/voc2012/VOCdevkit/VOC2012/train.txt', k=9)
+    anchors = anchor.generate_anchor(
+        annotations_dir="../data/voc2012/VOCdevkit/VOC2012/train.txt", k=9
+    )
     print(anchors)

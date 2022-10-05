@@ -22,7 +22,9 @@ def resize_image(img, target_sizes, keep_ratio=True, label=None):
     if keep_ratio:
         image_new = np.full(shape=(target_h, target_w, 3), fill_value=128.0)
         delta_h, delta_w = (target_h - temp_h) // 2, (target_w - temp_w) // 2
-        image_new[delta_h: delta_h + temp_h, delta_w: delta_w + temp_w, :] = image_resize
+        image_new[
+            delta_h : delta_h + temp_h, delta_w : delta_w + temp_w, :
+        ] = image_resize
 
         if label is not None:
             label[:, [0, 2]] = (label[:, [0, 2]] * scale * w + delta_w) / target_w
@@ -47,24 +49,31 @@ def resize_back(bboxes, target_sizes, original_shape):
     bboxes[:, [0, 2]] = 1.0 * (bboxes[:, [0, 2]] - dw) / resize_ratio
     bboxes[:, [1, 3]] = 1.0 * (bboxes[:, [1, 3]] - dh) / resize_ratio
     return bboxes
- 
+
 
 def xyxy2xywh(box):
-    y0 = (box[:, 0: 1] + box[:, 2: 3]) / 2.  # x center
-    y1 = (box[:, 1: 2] + box[:, 3: 4]) / 2.  # y center
-    y2 = box[:, 2: 3] - box[:, 0: 1]  # width
-    y3 = box[:, 3: 4] - box[:, 1: 2]  # height
-    y = tf.concat([y0, y1, y2, y3], axis=-1) if isinstance(box, tf.Tensor) \
+    y0 = (box[:, 0:1] + box[:, 2:3]) / 2.0  # x center
+    y1 = (box[:, 1:2] + box[:, 3:4]) / 2.0  # y center
+    y2 = box[:, 2:3] - box[:, 0:1]  # width
+    y3 = box[:, 3:4] - box[:, 1:2]  # height
+    y = (
+        tf.concat([y0, y1, y2, y3], axis=-1)
+        if isinstance(box, tf.Tensor)
         else np.concatenate([y0, y1, y2, y3], axis=-1)
+    )
     return y
 
 
 def xywh2xyxy(box):
-    y0 = box[..., 0: 1] - box[..., 2: 3] / 2  # top left x
-    y1 = box[..., 1: 2] - box[..., 3: 4] / 2  # top left y
-    y2 = box[..., 0: 1] + box[..., 2: 3] / 2  # bottom right x
-    y3 = box[..., 1: 2] + box[..., 3: 4] / 2  # bottom right y
-    y = tf.concat([y0, y1, y2, y3], axis=-1) if isinstance(box, tf.Tensor) else np.concatenate([y0, y1, y2, y3], axis=-1)
+    y0 = box[..., 0:1] - box[..., 2:3] / 2  # top left x
+    y1 = box[..., 1:2] - box[..., 3:4] / 2  # top left y
+    y2 = box[..., 0:1] + box[..., 2:3] / 2  # bottom right x
+    y3 = box[..., 1:2] + box[..., 3:4] / 2  # bottom right y
+    y = (
+        tf.concat([y0, y1, y2, y3], axis=-1)
+        if isinstance(box, tf.Tensor)
+        else np.concatenate([y0, y1, y2, y3], axis=-1)
+    )
     return y
 
 
@@ -77,10 +86,14 @@ def box_iou(box1, box2, broadcast=True):
     boxes1_area = box1[..., 2] * box1[..., 3]
     boxes2_area = box2[..., 2] * box2[..., 3]
 
-    box1 = tf.concat([box1[..., :2] - box1[..., 2:] * 0.5,
-                      box1[..., :2] + box1[..., 2:] * 0.5], axis=-1)  # xmin, ymin, xmax, ymax
-    box2 = tf.concat([box2[..., :2] - box2[..., 2:] * 0.5,
-                      box2[..., :2] + box2[..., 2:] * 0.5], axis=-1)
+    box1 = tf.concat(
+        [box1[..., :2] - box1[..., 2:] * 0.5, box1[..., :2] + box1[..., 2:] * 0.5],
+        axis=-1,
+    )  # xmin, ymin, xmax, ymax
+    box2 = tf.concat(
+        [box2[..., :2] - box2[..., 2:] * 0.5, box2[..., :2] + box2[..., 2:] * 0.5],
+        axis=-1,
+    )
 
     left_up = tf.maximum(box1[..., :2], box2[..., :2])
     right_down = tf.minimum(box1[..., 2:], box2[..., 2:])

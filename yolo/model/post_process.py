@@ -3,14 +3,21 @@
 # @Author: Longxing Tan, tanlongxing888@163.com
 
 import sys
-sys.path.append('..')
+
+sys.path.append("..")
 import numpy as np
 import tensorflow as tf
-from dataset.image_utils import xywh2xyxy, box_iou
+from dataset.image_utils import box_iou, xywh2xyxy
 
 
-def batch_non_max_suppression(prediction, conf_threshold=0.5, iou_threshold=0.25, classes=None, agnostic=False,
-                              labels=()):
+def batch_non_max_suppression(
+    prediction,
+    conf_threshold=0.5,
+    iou_threshold=0.25,
+    classes=None,
+    agnostic=False,
+    labels=(),
+):
     """Performs Non-Maximum Suppression (NMS) on inference results
     prediction: batch_size * 3grid * (num_classes + 5)
     Returns:
@@ -37,12 +44,21 @@ def batch_non_max_suppression(prediction, conf_threshold=0.5, iou_threshold=0.25
             classes_of_clss = tf.boolean_mask(classes, mask)  # n_conf
             score_of_clss = tf.boolean_mask(score, mask)  # n_conf
 
-            select_indices = tf.image.non_max_suppression(box_of_clss, score_of_clss, max_output_size=50,
-                                                          iou_threshold=iou_threshold)  # for one class
+            select_indices = tf.image.non_max_suppression(
+                box_of_clss,
+                score_of_clss,
+                max_output_size=50,
+                iou_threshold=iou_threshold,
+            )  # for one class
             box_of_clss = tf.gather(box_of_clss, select_indices)
             score_of_clss = tf.gather(tf.expand_dims(score_of_clss, -1), select_indices)
-            classes_of_clss = tf.cast(tf.gather(tf.expand_dims(classes_of_clss, -1), select_indices), tf.float32)
-            pred_of_clss = tf.concat([box_of_clss, score_of_clss, classes_of_clss], axis=-1)
+            classes_of_clss = tf.cast(
+                tf.gather(tf.expand_dims(classes_of_clss, -1), select_indices),
+                tf.float32,
+            )
+            pred_of_clss = tf.concat(
+                [box_of_clss, score_of_clss, classes_of_clss], axis=-1
+            )
             pred_nms.append(pred_of_clss)
 
         output[i] = tf.concat(pred_nms, axis=0)
