@@ -40,7 +40,7 @@ parser.add_argument(
 
 parser.add_argument("--log_dir", type=str, default="/home/fsuser/AI_ENGINE/yolov5_tf_original/Yolov5/logs", help="log path")
 parser.add_argument(
-    "--checkpoint_dir", type=str, default="/home/fsuser/AI_ENGINE/yolov5_tf_original/Yolov5/weights", help="saved checkpoint path"
+    "--checkpoint_dir", type=str, default="/home/fsuser/AI_ENGINE/yolov5_tf_original/Yolov5/weights/weight-{epoch}", help="saved checkpoint path"
 )
 parser.add_argument(
     "--saved_model_dir",

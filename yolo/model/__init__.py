@@ -4,3 +4,4 @@
 
 from .optimizer import LrScheduler, Optimizer
 from .yolo import Yolo
+from .loss import YoloLoss
