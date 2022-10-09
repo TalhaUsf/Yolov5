@@ -38,6 +38,7 @@ class DataReader(object):
         self.annotations = self.load_annotations(annotations_dir)
         self.idx = range(len(self.annotations))
         self.img_size = img_size  # image_target_size
+        self.image_target_size = img_size  # image_target_size
         self.transforms = transforms
         self.mosaic = mosaic
         self.augment = augment

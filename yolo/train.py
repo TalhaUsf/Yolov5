@@ -26,6 +26,8 @@ tf.random.set_seed(1949)
 
 class Trainer(object):
     """Trainer class that uses the dataset and model to train
+    ⚡uses the custom training loop. Convert it to model.fit form
+    
     # Usage
     data_loader = tf.data.Dataset()
     trainer = Trainer(params)
@@ -40,6 +42,7 @@ class Trainer(object):
         if os.path.exists(self.params["log_dir"]):
             shutil.rmtree(self.params["log_dir"])
         self.log_writer = tf.summary.create_file_writer(self.params["log_dir"])
+        
         self.global_step = tf.Variable(0, trainable=False, dtype=tf.int64)
         self.build_model()
 
@@ -48,17 +51,27 @@ class Trainer(object):
         define the training strategy and model, loss, optimizer
         :return:
         """
+        # FIXME use 
         if self.params["multi_gpus"]:
+            # Synchronous training across multiple replicas on one machine.
             self.strategy = tf.distribute.MirroredStrategy(devices=None)
         else:
+            # 👉 train on a specific GPU
+            # Synchronous training across multiple replicas on one machine.
             self.strategy = tf.distribute.OneDeviceStrategy(device="/gpu:0")
 
         with self.strategy.scope():
+            # ==========================================================================
+            #                   define model inside the strategy scope                                  
+            # ==========================================================================
             self.model = Yolo(yaml_dir=self.params["yaml_dir"])
             self.anchors = self.model.module_list[-1].anchors
             self.stride = self.model.module_list[-1].stride
             self.num_classes = self.model.module_list[-1].num_classes
 
+            # # --------------------------------------------------------------------------
+            # #                     define loss functions inside scope                        
+            # # --------------------------------------------------------------------------
             self.loss_fn = YoloLoss(
                 self.model.module_list[-1].anchors,
                 ignore_iou_threshold=0.3,
@@ -75,7 +88,9 @@ class Trainer(object):
         :param transfer: pretrain
         :return:
         """
+        # how much steps are there in 1 epoch
         steps_per_epoch = train_dataset.len / self.params["batch_size"]
+        # how many steps will be there in total
         self.total_steps = int(self.params["n_epochs"] * steps_per_epoch)
         self.params["warmup_steps"] = self.params["warmup_epochs"] * steps_per_epoch
 
@@ -116,6 +131,10 @@ class Trainer(object):
                     tf.summary.scalar("loss", loss, step=self.global_step)
                     tf.summary.scalar("lr", self.optimizer.lr, step=self.global_step)
                 self.log_writer.flush()
+                
+            val_loss_epoch = self.validate(valid_dataset)
+            tf.summary.scalar("val-loss", val_loss_epoch, step=self.global_step)
+            print(f"EPOCH {epoch} \t val-loss {val_loss_epoch}")
 
             if epoch % 3 == 0:
                 ckpt_save_path = ckpt_manager.save()
@@ -167,7 +186,17 @@ class Trainer(object):
 
 
 if __name__ == "__main__":
+    
+    # ==========================================================================
+    #                             make trainer instance                                  
+    # ==========================================================================
+    
     trainer = Trainer(params)
+    
+    # ==========================================================================
+    #                             create dataloaders🛠️                                  
+    # ==========================================================================
+    
     DataReader = DataReader(
         params["train_annotations_dir"],
         img_size=params["img_size"],
@@ -185,7 +214,10 @@ if __name__ == "__main__":
         params["anchor_assign_method"],
         params["anchor_positive_augment"],
     )
+    
+    
     train_dataset = data_loader(batch_size=params["batch_size"], anchor_label=True)
     train_dataset.len = len(DataReader)
 
-    trainer.train(train_dataset)
+    # 🔥 run actual training
+    trainer.train(train_dataset=train_dataset, valid_dataset=train_dataset , transfer="resume")

@@ -7,6 +7,11 @@ import argparse
 
 parser = argparse.ArgumentParser()
 
+
+
+# # --------------------------------------------------------------------------
+# #                              related to data                        
+# # --------------------------------------------------------------------------
 parser.add_argument(
     "--train_annotations_dir",
     type=str,
@@ -28,6 +33,11 @@ parser.add_argument(
 parser.add_argument(
     "--yaml_dir", type=str, default="/home/fsuser/AI_ENGINE/yolov5_tf_original/Yolov5/yolo/configs/yolo-m-mish.yaml", help="model.yaml path"
 )
+# # --------------------------------------------------------------------------
+# #                              related to training                        
+# # --------------------------------------------------------------------------
+
+
 parser.add_argument("--log_dir", type=str, default="/home/fsuser/AI_ENGINE/yolov5_tf_original/Yolov5/logs", help="log path")
 parser.add_argument(
     "--checkpoint_dir", type=str, default="/home/fsuser/AI_ENGINE/yolov5_tf_original/Yolov5/weights", help="saved checkpoint path"
@@ -39,12 +49,12 @@ parser.add_argument(
     help="saved pb model path",
 )
 
-parser.add_argument("--n_epochs", type=int, default=30)
+parser.add_argument("--n_epochs", type=int, default=130)
 parser.add_argument(
-    "--batch_size", type=int, default=4, help="total batch size for all GPUs"
+    "--batch_size", type=int, default=32, help="total batch size for all GPUs"
 )
-parser.add_argument("--multi_gpus", type=bool, default=False)
-parser.add_argument("--init_learning_rate", type=float, default=3e-4)
+parser.add_argument("--multi_gpus", type=bool, default=True)
+parser.add_argument("--init_learning_rate", type=float, default=1e-3)
 parser.add_argument("--warmup_learning_rate", type=float, default=1e-6)
 parser.add_argument("--warmup_epochs", type=int, default=2)
 parser.add_argument("--img_size", type=int, default=640, help="image target size")

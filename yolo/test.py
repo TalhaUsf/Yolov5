@@ -57,6 +57,7 @@ class TestDataLoader(object):
 
 class Evaluator(object):
     def __init__(self, model_dir, class_name_dir, img_size):
+        print(f"loading model from {model_dir}")
         self.model = tf.saved_model.load(model_dir)
         self.id2name = {
             idx: name
@@ -151,4 +152,5 @@ if __name__ == "__main__":
     evaluator = Evaluator(
         params["saved_model_dir"], params["class_name_dir"], img_size=params["img_size"]
     )
-    evaluator.generate(test_dataset, "../data/results")
+    # evaluator.generate(test_dataset, "../data/results")
+    evaluator.generate(test_dataset, "data/sample")

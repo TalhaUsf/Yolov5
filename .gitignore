@@ -9,3 +9,6 @@
 **/temp.py
 /data/logs/*
 /data/*.zip
+weights
+data/sample/ground-truth
+data/sample/predicted
