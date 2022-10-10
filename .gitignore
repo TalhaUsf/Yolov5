@@ -13,3 +13,7 @@ weights
 data/sample/ground-truth
 data/sample/predicted
 wandb
+*.pb
+*.tflite
+*.zip
+Ibrahim_Bhaai_model

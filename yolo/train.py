@@ -79,6 +79,7 @@ class Trainer(object):
                 label_smoothing=self.params["label_smoothing"],
                 img_size=self.params["img_size"],
             )
+            # define optimizer inside scope
             self.optimizer = Optimizer("adam")()
 
     def train(self, train_dataset, valid_dataset=None, transfer="scratch"):
@@ -95,10 +96,11 @@ class Trainer(object):
         self.params["warmup_steps"] = self.params["warmup_epochs"] * steps_per_epoch
 
         with self.strategy.scope():
+            # define LR scheduler inside scope
             self.lr_scheduler = LrScheduler(
                 self.total_steps, self.params, scheduler_method="cosine"
             )
-            # => tf.keras.Model
+            # get the model instance
             self.model = self.model(self.params["img_size"])
 
             ckpt = tf.train.Checkpoint(model=self.model, optimizer=self.optimizer)
@@ -117,10 +119,22 @@ class Trainer(object):
                 print("Train from scratch")
                 print(self.model.summary())
 
+
+        # # --------------------------------------------------------------------------
+        # #                        distribute the dataset 🛢️                        
+        # # --------------------------------------------------------------------------
         train_dataset = self.strategy.experimental_distribute_dataset(train_dataset)
 
+        
+        # # --------------------------------------------------------------------------
+        # #                              main training loop 🏃‍♀️                        
+        # # --------------------------------------------------------------------------
         for epoch in range(1, self.params["n_epochs"] + 1):
+            # # --------------------------------------------------------------------------
+            # #                        mini-batches training loop 🏃‍♀️                        
+            # # --------------------------------------------------------------------------
             for step, (image, target) in enumerate(train_dataset):
+                # 🔥 forward pass step
                 loss = self.dist_train_step(image, target)
                 print(
                     "=> Epoch {}, Step {}, Loss {:.5f}".format(
@@ -161,6 +175,9 @@ class Trainer(object):
 
     @tf.function
     def dist_train_step(self, image, target):
+        """
+        Distributed training step, called from inside the mini-batches loop
+        """
         with self.strategy.scope():
             loss = self.strategy.run(self.train_step, args=(image, target))
             total_loss_mean = self.strategy.reduce(
