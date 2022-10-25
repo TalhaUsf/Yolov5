@@ -1,5 +1,4 @@
 # %%
-from codecs import ignore_errors
 import tensorflow as tf
 from rich.console import Console
 from keras_flops import get_flops
@@ -15,10 +14,10 @@ Console().print(detection_model.summary())
 
 # %%
 
-class Scaling(tf.keras.layers.Layer):
+class Scale_Wilson(tf.keras.layers.Layer):
 
     def __init__(self):
-        super().__init__()
+        super().__init__(name="scale_wilson")
         # Create a non-trainable weight.
         self.scaling = tf.keras.layers.Rescaling(scale=1./127.5, offset=-1)
 
@@ -27,10 +26,10 @@ class Scaling(tf.keras.layers.Layer):
         return self.scaling(inputs)
 
 # FIXME this might needs removal
-class Resizing(tf.keras.layers.Layer):
+class Resizing_Wilson(tf.keras.layers.Layer):
 
     def __init__(self):
-        super().__init__()
+        super().__init__(name="resize_wilson")
         # Create a non-trainable weight.
         self.resizing = tf.keras.layers.Resizing(
             height=512,
@@ -211,6 +210,7 @@ class DecodePredictions(tf.keras.layers.Layer):
         image_shape = tf.cast(tf.shape(images), dtype=tf.float32)
         anchor_boxes = self._anchor_box.get_anchors(
             image_shape[1], image_shape[2])
+        # x1, y1, x2, y2, cls1, cls2, cls3, ..... cls80
         box_predictions = predictions[:, :, :4]
         cls_predictions = tf.nn.sigmoid(predictions[:, :, 4:])
         boxes = self._decode_box_predictions(
@@ -235,8 +235,8 @@ inp = tf.keras.Input(
     name="input",
     dtype=tf.float32,
 )
-x = Resizing()(inp)
-x = Scaling()(x)
+x = Resizing_Wilson()(inp)
+x = Scale_Wilson()(x)
 predictions = detection_model(x)
 # modified_model = tf.keras.Model(inputs=inp, outputs=out)
 detections = DecodePredictions(confidence_threshold=0.5)(inp, predictions)
@@ -258,11 +258,40 @@ modified_model.save(
     include_optimizer=True,
     save_format='tf',
     save_traces=True
+
 )
+
+#%%
+
+# # --------------------------------------------------------------------------
+# #                          get top-k after NMS                       
+# # --------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # %%
 
-# 👉 convet to tflite
+# 👉 convert to tflite
 converter = tf.lite.TFLiteConverter.from_keras_model(modified_model)
 # optimize for speed and size
 converter.optimizations = [tf.lite.Optimize.DEFAULT]

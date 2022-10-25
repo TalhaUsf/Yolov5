@@ -17,7 +17,7 @@ class Optimizer(object):
         elif self.optimizer_method == "rmsprop":
             return tf.keras.optimizers.RMSprop()
         elif self.optimizer_method == "sgd":
-            return tf.keras.optimizers.SGD()
+            return tf.keras.optimizers.SGD(lr=0.001)
         else:
             raise ValueError("Unsupported optimizer {}".format(self.optimizer_method))
 

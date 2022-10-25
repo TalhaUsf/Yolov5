@@ -6,11 +6,11 @@ import os
 from yolo import Yolo, params
 # from .configs import params
 import wandb
-from yolo import DataLoader, DataReader, transforms, YoloLoss, LrScheduler, Optimizer
+from yolo import DataLoader, DataReader, transforms, YoloLoss, LrScheduler, Optimizer, YoloLoss_fit_api
 from wandb.keras import WandbCallback
 
 # clear session 
-tf.keras.backend.clear_session()
+# tf.keras.backend.clear_session()
 
 class Trainer(object):
     
@@ -26,14 +26,14 @@ class Trainer(object):
         
         
     def _get_strategy(self,):
-        # self.strategy = tf.distribute.MirroredStrategy(["GPU:0", "GPU:1"])
-        self.strategy =  tf.distribute.OneDeviceStrategy(device="/gpu:0")
+        self.strategy = tf.distribute.MirroredStrategy()
+        # self.strategy =  tf.distribute.OneDeviceStrategy(device="/gpu:0")
         
         
     
     def _build_model(self):
         
-        with self.strategy.scope():
+        
             self.model_class = Yolo(yaml_dir=self.params["yaml_dir"])
             self.anchors = self.model_class.module_list[-1].anchors
             self.stride = self.model_class.module_list[-1].stride
@@ -51,7 +51,7 @@ class Trainer(object):
     
     
     def _get_dataloader(self,):
-        with self.strategy.scope():
+        
             # define dataset-reader
             Reader = DataReader(
                                         self.params["train_annotations_dir"],
@@ -89,93 +89,98 @@ class Trainer(object):
     
     
     def _configure_loss(self,):
-        self.loss_fn = YoloLoss(
-                                    self.anchors,
-                                    ignore_iou_threshold=0.3,
-                                    num_classes=self.num_classes,
-                                    label_smoothing=self.params["label_smoothing"],
-                                    img_size=self.params["img_size"],
-                                )
+        '''
+        get loss function for yolo, should return the total loss as scalar
+        '''        
+        self.loss_fn = YoloLoss_fit_api(
+                                            self.anchors,
+                                            ignore_iou_threshold=0.3,
+                                            num_classes=self.num_classes,
+                                            label_smoothing=self.params["label_smoothing"],
+                                            img_size=self.params["img_size"],
+                                        )
 
 
     def _get_callbacks(self,):
-        wandb_callback = WandbCallback(
-                        monitor="val_loss", verbose=0, mode="min", save_weights_only=False,
-                        log_weights=True, log_gradients=(False), save_model=(True),
-                        training_data=None, validation_data=None, labels=[], predictions=36,
-                        generator=None, input_type=None, output_type=None, log_evaluation=(False),
-                        validation_steps=None, class_colors=None, log_batch_frequency=None,
-                        log_best_prefix="best_", save_graph=True, validation_indexes=None,
-                        validation_row_processor=None, prediction_row_processor=None,
-                        infer_missing_processors=(True), log_evaluation_frequency=0,
-                        compute_flops=(True)
-                    )
-        # define model chackpoint callback
-        ModelCheckpoint = tf.keras.callbacks.ModelCheckpoint(
-            filepath=self.params["checkpoint_dir"],
-            monitor="val_loss",
-            verbose=0,
-            save_best_only=False,
-            save_weights_only=False,
-            mode="min",
-            save_freq="epoch",
-            options=None,
-        )
-        # # define early stopping callback
-        # EarlyStopping = tf.keras.callbacks.EarlyStopping(
-        #     monitor="val_loss",
-        #     min_delta=0,
-        #     patience=10,
-        #     verbose=0,
-        #     mode="auto",
-        #     baseline=None,
-        #     restore_best_weights=True,
-        # )
-        # define learning rate scheduler callback
-        # LearningRateScheduler = LrScheduler(self.params["lr_scheduler"])
-        # define callbacks
-        callbacks = [ModelCheckpoint, 
-                    #  EarlyStopping, 
-                    #  LearningRateScheduler, 
-                     wandb_callback]
         
-        
-        
-        self.callbacks = callbacks
-
-    
-    
-    def train(self,):
-            
-        
-        
-        with self.strategy.scope():
-            self._configure_optimizer()
-            self._configure_loss()
-            self._get_callbacks()
-
-            self.model.compile(
-                                optimizer=self.optimizer,
-                                loss=self.loss_fn,
-                                metrics=["accuracy"],
-                            )
-        
-        
-            self.model.fit(
-                            self.train_dataset,
-                            epochs=self.params["n_epochs"],
-                            steps_per_epoch=self.train_data_len // self.params["batch_size"],
-                            validation_data=self.test_dataset,
-                            validation_steps=self.test_data_len // self.params["batch_size"],
-                            callbacks=self.callbacks,
+            wandb_callback = WandbCallback(
+                            monitor="val_loss", verbose=0, mode="min", save_weights_only=False,
+                            log_weights=True, log_gradients=(False), save_model=(True),
+                            training_data=None, validation_data=None, labels=[], predictions=36,
+                            generator=None, input_type=None, output_type=None, log_evaluation=(False),
+                            validation_steps=None, class_colors=None, log_batch_frequency=None,
+                            log_best_prefix="best_", save_graph=True, validation_indexes=None,
+                            validation_row_processor=None, prediction_row_processor=None,
+                            infer_missing_processors=(True), log_evaluation_frequency=0,
+                            compute_flops=(True)
                         )
+            # define model chackpoint callback
+            ModelCheckpoint = tf.keras.callbacks.ModelCheckpoint(
+                filepath=self.params["checkpoint_dir"],
+                monitor="val_loss",
+                verbose=0,
+                save_best_only=False,
+                save_weights_only=False,
+                mode="min",
+                save_freq="epoch",
+                options=None,
+            )
+            # # define early stopping callback
+            # EarlyStopping = tf.keras.callbacks.EarlyStopping(
+            #     monitor="val_loss",
+            #     min_delta=0,
+            #     patience=10,
+            #     verbose=0,
+            #     mode="auto",
+            #     baseline=None,
+            #     restore_best_weights=True,
+            # )
+            # define learning rate scheduler callback
+            # LearningRateScheduler = LrScheduler(self.params["lr_scheduler"])
+            # define callbacks
+            callbacks = [ModelCheckpoint, 
+                        #  EarlyStopping, 
+                        #  LearningRateScheduler, 
+                        wandb_callback]
             
-            self.model.save(self.params["save_weights_dir"]+"/final_model")
+            self.callbacks = callbacks
+
+
+    def train(self):
+        
+        
+        # define the loss, optimizer and callbacks under strategy scope
+        self._configure_optimizer()
+        self._configure_loss()
+        self._get_callbacks()
+
+        self.model.compile(
+                            optimizer=self.optimizer,
+                            loss=self.loss_fn,
+                            # metrics=["accuracy"],
+                        )
+        
+        # ⚡ start training the model
+        self.model.fit(
+                        self.train_dataset,
+                        epochs=self.params["n_epochs"],
+                        steps_per_epoch=self.train_data_len // self.params["batch_size"],
+                        validation_data=self.test_dataset,
+                        validation_steps=self.test_data_len // self.params["batch_size"],
+                        callbacks=self.callbacks,
+                    )
+        
+        # 💾 save the model as tf.keras.model
+        self.model.save(self.params["save_weights_dir"]+"/final_model")
         
 
     
     
 if __name__ == "__main__":
+    # 💀 disable all gpus
+    physical_devices = tf.config.list_physical_devices('GPU')
+    tf.config.set_visible_devices([], 'GPU')
+    # 🔎 start training
     run = wandb.init(project="yolo-tf", entity="bb_ai-team")
     trainer = Trainer(run, params)
     trainer.train()

@@ -54,7 +54,9 @@ class Trainer(object):
         # FIXME use 
         if self.params["multi_gpus"]:
             # Synchronous training across multiple replicas on one machine.
+            # tf.config.set_visible_devices([], 'GPU') # force it to use CPU
             self.strategy = tf.distribute.MirroredStrategy(devices=None)
+
         else:
             # 👉 train on a specific GPU
             # Synchronous training across multiple replicas on one machine.
@@ -80,7 +82,8 @@ class Trainer(object):
                 img_size=self.params["img_size"],
             )
             # define optimizer inside scope
-            self.optimizer = Optimizer("adam")()
+            # self.optimizer = Optimizer("adam")()
+            self.optimizer = Optimizer("sgd")()
 
     def train(self, train_dataset, valid_dataset=None, transfer="scratch"):
         """train function
@@ -109,7 +112,7 @@ class Trainer(object):
             )
             if transfer == "darknet":
                 print("Load weights from ")
-                model_pretrain = Yolo(self.params["yaml_dir"])()
+                model_pretrain = Yolo(self.params["yaml_dir"])(self.params["img_size"])
                 model_pretrain.load_weights()
                 self.model.get_layer().set_weights()
             elif transfer == "resume":
@@ -160,9 +163,36 @@ class Trainer(object):
 
     # @tf.function
     def train_step(self, image, target):
+        '''
+        how forward pass is done
+
+        Parameters
+        ----------
+        image : tf.Tensor
+            [N, H, W, C]
+        target : tf.Tensor
+            
+
+        Returns
+        -------
+        total_loss : tf.Tensor
+            iou_loss + conf_loss + prob_loss
+        '''        
         with tf.GradientTape() as tape:
             logit = self.model(image, training=True)
+            print(f"==============================================")
+            print(f"LOGITS\t\t {logit.__len__()}")
+            print(f"LOGITS[0]\t {logit[0].shape}")
+            print(f"LOGITS[1]\t {logit[1].shape}")
+            print(f"LOGITS[2]\t {logit[2].shape}")
+            print(f"==============================================")
+            print(f"TARGET\t\t {target.__len__()}")
+            print(f"TARGET[0]\t {target[0].shape}")
+            print(f"TARGET[1]\t {target[1].shape}")
+            print(f"TARGET[2]\t {target[2].shape}")
+            print(f"==============================================")
             iou_loss, conf_loss, prob_loss = self.loss_fn(target, logit)
+            # 🔥 Following line is necessary
             total_loss = iou_loss + conf_loss + prob_loss
 
         gradients = tape.gradient(total_loss, self.model.trainable_variables)
@@ -179,9 +209,10 @@ class Trainer(object):
         Distributed training step, called from inside the mini-batches loop
         """
         with self.strategy.scope():
+            # define the loss function
             loss = self.strategy.run(self.train_step, args=(image, target))
             total_loss_mean = self.strategy.reduce(
-                tf.distribute.ReduceOp.MEAN, loss, axis=None
+                tf.distribute.ReduceOp.SUM, loss, axis=None
             )
             return total_loss_mean
 
@@ -203,7 +234,9 @@ class Trainer(object):
 
 
 if __name__ == "__main__":
-    
+    # 💀 disable all gpus
+    # physical_devices = tf.config.list_physical_devices('GPU')
+    # tf.config.set_visible_devices([], 'GPU')
     # ==========================================================================
     #                             make trainer instance                                  
     # ==========================================================================
@@ -215,26 +248,38 @@ if __name__ == "__main__":
     # ==========================================================================
     
     DataReader = DataReader(
-        params["train_annotations_dir"],
-        img_size=params["img_size"],
-        transforms=transforms,
-        mosaic=params["mosaic_data"],
-        augment=params["augment_data"],
-        filter_idx=None,
-    )
+                                params["train_annotations_dir"],
+                                img_size=params["img_size"],
+                                transforms=transforms,
+                                mosaic=params["mosaic_data"],
+                                augment=params["augment_data"],
+                                filter_idx=None,
+                            )
 
     data_loader = DataLoader(
-        DataReader,
-        trainer.anchors,
-        trainer.stride,
-        params["img_size"],
-        params["anchor_assign_method"],
-        params["anchor_positive_augment"],
-    )
+                                DataReader,
+                                trainer.anchors,
+                                trainer.stride,
+                                params["img_size"],
+                                params["anchor_assign_method"],
+                                params["anchor_positive_augment"],
+                            )
     
     
     train_dataset = data_loader(batch_size=params["batch_size"], anchor_label=True)
     train_dataset.len = len(DataReader)
 
-    # 🔥 run actual training
+    # for step, (image, target) in enumerate(train_dataset):
+        
+    #     print(f"target length {len(target)}")
+    #     print(f"==========================================")
+    #     print(f"target[0] length {target[0].shape}")
+    #     print(f"target[1] length {target[1].shape}")
+    #     print(f"target[2] length {target[2].shape}")
+    #     print(f"==========================================")
+    #     break
+
+
+    #🔥 run actual training
     trainer.train(train_dataset=train_dataset, valid_dataset=train_dataset , transfer="resume")
+    # trainer.train(train_dataset=train_dataset, valid_dataset=train_dataset , transfer="scratch")
